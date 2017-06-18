@@ -13,6 +13,10 @@ class SearchTimeout(Exception):
     pass
 
 
+class SearchError(Exception):
+    pass
+
+
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
@@ -197,6 +201,8 @@ class MinimaxPlayer(IsolationPlayer):
             The maximum score.
 
         """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
         if game.utility(self) != 0:
             return game.utility(self)
         elif depth == 0:
@@ -226,6 +232,8 @@ class MinimaxPlayer(IsolationPlayer):
             The minimum score.
 
         """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
         if game.utility(self) != 0:
             return game.utility(self)
         elif depth == 0:
@@ -279,7 +287,7 @@ class MinimaxPlayer(IsolationPlayer):
 
         best_move = (-1, -1)
 
-        legal_moves = game.get_legal_moves()
+        legal_moves = game.get_legal_moves(self)
         if len(legal_moves) == 0:
             return best_move
 
@@ -328,8 +336,113 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        # Initialize the best move so that this function returns something
+        # in case the search fails due to timeout
+        move = (-1, -1)
+        depth = 1
+
+        try:
+            while depth <= self.search_depth:
+                score, move = self.alphabeta(game, depth)
+                # Ternimate the search immediately if we can win this game.
+                if score == float('inf'):
+                    break
+                depth += 1
+        except SearchTimeout:
+            print("Iterative-deepening alpha-beta search "
+                  "times out at depth == {}".format(depth))
+        finally:
+            return move
+
+
+    def min_value(self, game, depth, alpha, beta):
+        """
+
+        Parameters
+        ----------
+        game : isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        alpha : float
+            Alpha limits the lower bound of search on minimizing layers
+
+        beta : float
+            Beta limits the upper bound of search on maximizing layers
+
+        Returns
+        -------
+        score : float
+            The score.
+        move : (int, int)
+            The move corresponding to the `score`.
+
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        utility = game.utility(self)
+        if utility != 0:
+            return utility, (-1, -1)
+        elif depth == 0:
+            return self.score(game, self), (-1, -1)
+        else:
+            legal_moves = game.get_legal_moves()
+            score = (float('inf'), (-1, -1))
+            for move in legal_moves:
+                score = min(score, self.max_value(game.forecast_move(move),
+                                                  depth - 1, alpha, beta))
+                if score[0] <= alpha:
+                    return score
+                beta = min(score[0], beta)
+            return score
+
+    def max_value(self, game, depth, alpha, beta):
+        """
+
+        Parameters
+        ----------
+        game : isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+        alpha : float
+            Alpha limits the lower bound of search on minimizing layers
+        beta : float
+            Beta limits the upper bound of search on maximizing layers
+
+        Returns
+        -------
+        score : float
+            The score.
+        move : (int, int)
+            The move corresponding to the `score`.
+
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        utility = game.utility(self)
+        if utility != 0:
+            return utility, (-1, -1)
+        elif depth == 0:
+            return self.score(game, self), (-1, -1)
+        else:
+            legal_moves = game.get_legal_moves()
+            score = (float('-inf'), (-1, -1))
+            for move in legal_moves:
+                score = max(score, self.min_value(game.forecast_move(move),
+                                                  depth - 1, alpha, beta))
+                if score[0] >= beta:
+                    return score
+                alpha = max(score[0], alpha)
+            return score
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -361,7 +474,10 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         Returns
         -------
-        (int, int)
+        score : float
+            The score.
+
+        move : (int, int)
             The board coordinates of the best move found in the current search;
             (-1, -1) if there are no legal moves
 
@@ -379,8 +495,16 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        move = (-1, -1)
+        legal_moves = game.get_legal_moves(self)
+
+        if not legal_moves:
+            return float('-inf'), move
+
+        score, move = max(
+            [(self.min_value(game.forecast_move(m), depth - 1, alpha, beta), m)
+             for m in legal_moves])
+        return score, move
 
 
 if __name__ == "__main__":
@@ -388,8 +512,8 @@ if __name__ == "__main__":
     from sample_players import RandomPlayer
 
     # create an isolation board (by default 7x7)
-    player1 = MinimaxPlayer(search_depth=5)
-    player2 = RandomPlayer()
+    player1 = AlphaBetaPlayer(search_depth=3)
+    player2 = MinimaxPlayer(search_depth=3)
     game = Board(player1, player2)
 
     # place player 1 on the board at row 2, column 3, then place player 2 on
