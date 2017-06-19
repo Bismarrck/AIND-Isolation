@@ -70,7 +70,7 @@ def custom_score(game, player, a=4, b=3, c=1, d=3):
     own_score = num_own_moves * a + num_own_controlled * c
     opp_score = num_opp_moves * b + num_opp_controlled * d
 
-    return own_score - opp_score
+    return float(own_score - opp_score)
 
 
 def custom_score_2(game, player, a=4, b=8, c=1):
@@ -119,7 +119,7 @@ def custom_score_2(game, player, a=4, b=8, c=1):
 
     player_score = num_next_own * b + num_own_moves * a
     opp_score = num_next_opp * c
-    return player_score - opp_score
+    return float(player_score - opp_score)
 
 
 def custom_score_3(game, player, a=6, b=3):
@@ -398,33 +398,30 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         Returns
         -------
-        (int, int)
+        move: (int, int)
             Board coordinates corresponding to a legal move; may return
             (-1, -1) if there are no available legal moves.
+
         """
         self.time_left = time_left
 
         # Initialize the best move so that this function returns something
         # in case the search fails due to timeout
         move = (-1, -1)
-        depth = 1
+        depth = 0
 
         try:
-            while depth <= self.search_depth:
-                score, move = self.alphabeta(game, depth)
-                # Ternimate the search immediately if we can win this game.
-                if score == float('inf'):
-                    break
+            while self.time_left() > self.TIMER_THRESHOLD:
                 depth += 1
+                move = self.alphabeta(game, depth)
         except SearchTimeout:
-            print("Iterative-deepening alpha-beta search "
-                  "times out at depth == {}".format(depth))
+            pass
         finally:
             return move
 
-
     def min_value(self, game, depth, alpha, beta):
         """
+        Minimize the opponent.
 
         Parameters
         ----------
@@ -460,17 +457,22 @@ class AlphaBetaPlayer(IsolationPlayer):
             return self.score(game, self), (-1, -1)
         else:
             legal_moves = game.get_legal_moves()
-            score = (float('inf'), (-1, -1))
+            best_score = float('inf')
+            best_move = legal_moves[0]
             for move in legal_moves:
-                score = min(score, self.max_value(game.forecast_move(move),
-                                                  depth - 1, alpha, beta))
-                if score[0] <= alpha:
-                    return score
-                beta = min(score[0], beta)
-            return score
+                score, _ = self.max_value(
+                    game.forecast_move(move), depth - 1, alpha, beta)
+                best_score = min(score, best_score)
+                if best_score < beta:
+                    beta = best_score
+                    best_move = move
+                if beta <= alpha:
+                    break
+            return best_score, best_move
 
     def max_value(self, game, depth, alpha, beta):
         """
+        Maximize the player.
 
         Parameters
         ----------
@@ -503,14 +505,18 @@ class AlphaBetaPlayer(IsolationPlayer):
             return self.score(game, self), (-1, -1)
         else:
             legal_moves = game.get_legal_moves()
-            score = (float('-inf'), (-1, -1))
+            best_score = float('-inf')
+            best_move = legal_moves[0]
             for move in legal_moves:
-                score = max(score, self.min_value(game.forecast_move(move),
-                                                  depth - 1, alpha, beta))
-                if score[0] >= beta:
-                    return score
-                alpha = max(score[0], alpha)
-            return score
+                score, _ = self.min_value(
+                    game.forecast_move(move), depth - 1, alpha, beta)
+                best_score = max(score, best_score)
+                if best_score > alpha:
+                    alpha = best_score
+                    best_move = move
+                if alpha >= beta:
+                    break
+            return best_score, best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -542,9 +548,6 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         Returns
         -------
-        score : float
-            The score.
-
         move : (int, int)
             The board coordinates of the best move found in the current search;
             (-1, -1) if there are no legal moves
@@ -569,7 +572,5 @@ class AlphaBetaPlayer(IsolationPlayer):
         if not legal_moves:
             return float('-inf'), move
 
-        score, move = max(
-            [(self.min_value(game.forecast_move(m), depth - 1, alpha, beta), m)
-             for m in legal_moves])
-        return score, move
+        _, move = self.max_value(game, depth, alpha, beta)
+        return move
