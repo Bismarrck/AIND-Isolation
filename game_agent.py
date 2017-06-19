@@ -5,7 +5,6 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
-from sample_players import improved_score
 
 
 class SearchTimeout(Exception):
@@ -13,11 +12,7 @@ class SearchTimeout(Exception):
     pass
 
 
-class SearchError(Exception):
-    pass
-
-
-def custom_score(game, player):
+def custom_score(game, player, a=9, b=9, c=2, d=1):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -26,6 +21,10 @@ def custom_score(game, player):
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
 
+    Notes
+    -----
+    The default parameters of `a`, `b`, `c`, `d` are leanred with grid search.
+
     Parameters
     ----------
     game : `isolation.Board`
@@ -36,16 +35,45 @@ def custom_score(game, player):
         A player instance in the current game (i.e., an object corresponding to
         one of the player objects `game.__player_1__` or `game.__player_2__`.)
 
+    a, b, c, d : int
+        Learnable scale parameters.
+
     Returns
     -------
-    float
+    score: float
         The heuristic value of the current game state to the specified player.
+
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    opp = game.get_opponent(player)
+
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(opp)
+
+    num_own_moves = len(own_moves)
+    num_opp_moves = len(opp_moves)
+
+    if game.is_loser(player) or num_own_moves == 0:
+        return float('-inf')
+    if game.is_winner(player) or num_opp_moves == 0:
+        return float('inf')
+
+    own_controlled = []
+    for move in own_moves:
+        own_controlled.extend(game.forecast_move(move).get_legal_moves())
+    num_own_controlled = len(set(own_controlled))
+
+    opp_controlled = []
+    for move in opp_moves:
+        opp_controlled.extend(game.forecast_move(move).get_legal_moves(opp))
+    num_opp_controlled = len(set(opp_controlled))
+
+    own_score = num_own_moves * a + num_own_controlled * c
+    opp_score = num_opp_moves * b + num_opp_controlled * d
+
+    return own_score - opp_score
 
 
-def custom_score_2(game, player):
+def custom_score_2(game, player, a, b, c):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -62,18 +90,43 @@ def custom_score_2(game, player):
         A player instance in the current game (i.e., an object corresponding to
         one of the player objects `game.__player_1__` or `game.__player_2__`.)
 
+    a, b, c : int
+        Learnable parameters.
+
     Returns
     -------
-    float
+    score: float
         The heuristic value of the current game state to the specified player.
+
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    opp = game.get_opponent(player)
+
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(opp)
+
+    num_own_moves = len(own_moves)
+    num_opp_moves = len(opp_moves)
+
+    if game.is_loser(player) or num_own_moves == 0:
+        return float('-inf')
+    if game.is_winner(player) or num_opp_moves == 0:
+        return float('inf')
+
+    num_next_own = sum(
+        [len(game.forecast_move(m).get_legal_moves()) for m in own_moves])
+    num_next_opp = sum(
+        [len(game.forecast_move(m).get_legal_moves(opp)) for m in opp_moves])
+
+    player_score = num_next_own * b + num_own_moves * a
+    opp_score = num_next_opp * c
+    return player_score - opp_score
 
 
-def custom_score_3(game, player):
+def custom_score_3(game, player, a=9, b=4):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
+
+    This is about 5% better than `improved_score`.
 
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
@@ -88,13 +141,28 @@ def custom_score_3(game, player):
         A player instance in the current game (i.e., an object corresponding to
         one of the player objects `game.__player_1__` or `game.__player_2__`.)
 
+    a, b : int
+        Learnable parameters.
+
     Returns
     -------
-    float
+    score: float
         The heuristic value of the current game state to the specified player.
+
+    See Also
+    --------
+    The grid search is implemented at ``tornament.grid_search_custom_fn3_ab``.
+
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    num_own_moves = len(game.get_legal_moves(player))
+    num_opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(num_own_moves * a - num_opp_moves * b)
 
 
 class IsolationPlayer:
@@ -119,7 +187,7 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
-    def __init__(self, search_depth=3, score_fn=improved_score, timeout=10.):
+    def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
         self.search_depth = search_depth
         self.score = score_fn
         self.time_left = None
@@ -505,42 +573,3 @@ class AlphaBetaPlayer(IsolationPlayer):
             [(self.min_value(game.forecast_move(m), depth - 1, alpha, beta), m)
              for m in legal_moves])
         return score, move
-
-
-if __name__ == "__main__":
-    from isolation import Board
-    from sample_players import RandomPlayer
-
-    # create an isolation board (by default 7x7)
-    player1 = AlphaBetaPlayer(search_depth=3)
-    player2 = MinimaxPlayer(search_depth=3)
-    game = Board(player1, player2)
-
-    # place player 1 on the board at row 2, column 3, then place player 2 on
-    # the board at row 0, column 5; display the resulting board state.  Note
-    # that the .apply_move() method changes the calling object in-place.
-    game.apply_move((2, 3))
-    game.apply_move((0, 5))
-    print(game.to_string())
-
-    # players take turns moving on the board, so player1 should be next to move
-    assert(player1 == game.active_player)
-
-    # get a list of the legal moves available to the active player
-    print(game.get_legal_moves())
-
-    # get a successor of the current state by making a copy of the board and
-    # applying a move. Notice that this does NOT change the calling object
-    # (unlike .apply_move()).
-    new_game = game.forecast_move((1, 1))
-    assert(new_game.to_string() != game.to_string())
-    print("\nOld state:\n{}".format(game.to_string()))
-    print("\nNew state:\n{}".format(new_game.to_string()))
-
-    # play the remainder of the game automatically -- outcome can be "illegal
-    # move", "timeout", or "forfeit"
-    winner, history, outcome = game.play()
-    print("\nWinner: {}\nOutcome: {}".format(winner, outcome))
-    print(game.to_string())
-    print("Move history:\n{!s}".format(history))
-
