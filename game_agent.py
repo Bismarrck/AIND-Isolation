@@ -12,7 +12,7 @@ class SearchTimeout(Exception):
     pass
 
 
-def custom_score(game, player, a=4, b=3, c=1, d=3):
+def custom_score(game, player, a=3, b=2, c=1, d=1):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -73,7 +73,7 @@ def custom_score(game, player, a=4, b=3, c=1, d=3):
     return float(own_score - opp_score)
 
 
-def custom_score_2(game, player, a=4, b=8, c=1):
+def custom_score_2(game, player, a=1, b=1, c=1):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -122,11 +122,11 @@ def custom_score_2(game, player, a=4, b=8, c=1):
     return float(player_score - opp_score)
 
 
-def custom_score_3(game, player, a=6, b=3):
+def custom_score_3(game, player, a=2, b=3):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
-    This is about 5% better than `improved_score`.
+    This is about 3% better than `improved_score`.
 
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
