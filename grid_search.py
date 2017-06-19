@@ -5,6 +5,7 @@ Search best parameters for the custom score functions.
 from __future__ import print_function, absolute_import
 
 import numpy as np
+from os.path import isfile
 from itertools import product
 from joblib import Parallel, delayed
 from tournament import Agent, play_round
@@ -40,6 +41,25 @@ def get_cpu_agents():
     ]
 
 
+def load_grids(filename):
+    """
+    Load grid points from a npz file.
+
+    Parameters
+    ----------
+    filename : str
+        The file to load.
+
+    Returns
+    -------
+    grids : array_like
+        An array of grids to search.
+
+    """
+    ar = np.load(filename)
+    return ar["points"]
+
+
 def _eval_with_params(cpu_agents, num_matches, score_fn, **kwargs):
     """
     Evaluation the given parameter set for the score function.
@@ -72,7 +92,7 @@ def _eval_with_params(cpu_agents, num_matches, score_fn, **kwargs):
     return total_wins
 
 
-def grid_search_custom_fn3_ab(n_jobs=-1, num_matches=20):
+def grid_search_custom_fn3_ab(n_jobs=-1, num_matches=20, grid_file=None):
     """
     Grid search of the best a,b for `custom_score_3`.
 
@@ -87,9 +107,16 @@ def grid_search_custom_fn3_ab(n_jobs=-1, num_matches=20):
     num_matches : int
         The number of matches against each opponent.
 
+    grid_file : str
+        The npz file which contains the grids to search. If given, only grid
+        points in this file will be tested.
+
     """
     cpu_agents = get_cpu_agents()
-    ab = list(product(range(1, 10), range(1, 10)))
+    if grid_file and isfile(grid_file):
+        ab = load_grids(grid_file)
+    else:
+        ab = list(product(range(1, 10), range(1, 10)))
     total_matches = num_matches * len(cpu_agents) * 2
     total_wins = Parallel(n_jobs=n_jobs)(
         delayed(_eval_with_params)(
@@ -106,7 +133,7 @@ def grid_search_custom_fn3_ab(n_jobs=-1, num_matches=20):
     print("-------------------------------")
 
 
-def grid_search_custom_fn2_abc(n_jobs=-1, num_matches=20):
+def grid_search_custom_fn2_abc(n_jobs=-1, num_matches=20, grid_file=None):
     """
     Grid search of the best a,b,c for `custom_score_2`.
 
@@ -121,9 +148,16 @@ def grid_search_custom_fn2_abc(n_jobs=-1, num_matches=20):
     num_matches : int
         The number of matches against each opponent.
 
+    grid_file : str
+        The npz file which contains the grids to search. If given, only grid
+        points in this file will be tested.
+
     """
     cpu_agents = get_cpu_agents()
-    abc = list(product(range(1, 10), range(1, 10), range(1, 5)))
+    if grid_file and isfile(grid_file):
+        abc = load_grids(grid_file)
+    else:
+        abc = list(product(range(1, 10), range(1, 10), range(1, 5)))
     total_matches = num_matches * len(cpu_agents) * 2
     total_wins = Parallel(n_jobs=n_jobs)(
         delayed(_eval_with_params)(
@@ -140,7 +174,7 @@ def grid_search_custom_fn2_abc(n_jobs=-1, num_matches=20):
     print("---------------------------------------")
 
 
-def grid_search_custom_fn1_abcd(n_jobs=-1, num_matches=20):
+def grid_search_custom_fn1_abcd(n_jobs=-1, num_matches=20, grid_file=None):
     """
     Grid search of the best a,b,c,d for `custom_score`.
 
@@ -155,9 +189,17 @@ def grid_search_custom_fn1_abcd(n_jobs=-1, num_matches=20):
     num_matches : int
         The number of matches against each opponent.
 
+    grid_file : str
+        The npz file which contains the grids to search. If given, only grid
+        points in this file will be tested.
+
     """
     cpu_agents = get_cpu_agents()
-    abcd = list(product(range(1, 10), range(1, 10), range(1, 5), range(1, 5)))
+    if grid_file and isfile(grid_file):
+        abcd = load_grids(grid_file)
+    else:
+        abcd = list(product(range(1, 10), range(1, 10),
+                            range(1, 5), range(1, 5)))
     total_matches = num_matches * len(cpu_agents) * 2
     total_wins = Parallel(n_jobs=n_jobs)(
         delayed(_eval_with_params)(
@@ -201,11 +243,22 @@ if __name__ == "__main__":
              "(n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs "
              "but one are used."
     )
+    parser.add_argument(
+        "--grid_file",
+        default=None,
+        type=str,
+        help="The npz file which contains the grids to search. If given, only "
+             "grid points in this file will be tested."
+    )
 
     args = parser.parse_args()
+    params = {"num_matches": args.num_matches,
+              "n_jobs": args.num_jobs,
+              "grid_file": args.grid_file}
+
     if args.score_fn == "fn1":
-        grid_search_custom_fn1_abcd(num_matches=args.num_matches)
+        grid_search_custom_fn1_abcd(**params)
     elif args.score_fn == "fn2":
-        grid_search_custom_fn2_abc(num_matches=args.num_matches)
+        grid_search_custom_fn2_abc(**params)
     else:
-        grid_search_custom_fn3_ab(num_matches=args.num_matches)
+        grid_search_custom_fn3_ab(**params)
