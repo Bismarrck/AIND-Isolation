@@ -118,7 +118,7 @@ def grid_search_custom_fn3_ab(n_jobs=-1, num_matches=20, grid_file=None):
     else:
         ab = list(product(range(1, 10), range(1, 10)))
     total_matches = num_matches * len(cpu_agents) * 2
-    total_wins = Parallel(n_jobs=n_jobs)(
+    total_wins = Parallel(n_jobs=n_jobs, verbose=10)(
         delayed(_eval_with_params)(
             cpu_agents, num_matches, custom_score_3, a=a, b=b
         )
@@ -159,7 +159,7 @@ def grid_search_custom_fn2_abc(n_jobs=-1, num_matches=20, grid_file=None):
     else:
         abc = list(product(range(1, 10), range(1, 10), range(1, 5)))
     total_matches = num_matches * len(cpu_agents) * 2
-    total_wins = Parallel(n_jobs=n_jobs)(
+    total_wins = Parallel(n_jobs=n_jobs, verbose=10)(
         delayed(_eval_with_params)(
             cpu_agents, num_matches, custom_score_2, a=a, b=b, c=c
         )
@@ -201,7 +201,7 @@ def grid_search_custom_fn1_abcd(n_jobs=-1, num_matches=20, grid_file=None):
         abcd = list(product(range(1, 10), range(1, 10),
                             range(1, 5), range(1, 5)))
     total_matches = num_matches * len(cpu_agents) * 2
-    total_wins = Parallel(n_jobs=n_jobs)(
+    total_wins = Parallel(n_jobs=n_jobs, verbose=10)(
         delayed(_eval_with_params)(
             cpu_agents, num_matches, custom_score, a=a, b=b, c=c, d=d
         )
