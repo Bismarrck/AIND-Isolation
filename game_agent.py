@@ -73,7 +73,7 @@ def custom_score(game, player, a=3, b=2, c=1, d=1):
     return float(own_score - opp_score)
 
 
-def custom_score_2(game, player, a=1, b=1, c=1):
+def custom_score_2(game, player, a=7, b=1, c=2):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 

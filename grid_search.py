@@ -216,12 +216,41 @@ def grid_search_custom_fn1_abcd(n_jobs=-1, num_matches=20, grid_file=None):
     print("-----------------------------------------------")
 
 
+def custom_match(num_matchs=20):
+    """
+    Matches between the custom functions.
+
+    Parameters
+    ----------
+    num_matchs : int
+        The number of matches against each opponent.
+
+    """
+    agents = [
+        Agent(AlphaBetaPlayer(score_fn=custom_score), "AB_Custom_1"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_2), "AB_Custom_2"),
+        Agent(AlphaBetaPlayer(score_fn=custom_score_3), "AB_Custom_3"),
+    ]
+    for i in range(1, 3):
+        for j in range(i + 1, len(agents)):
+            agent_i = agents[i]
+            agent_j = agents[j]
+            wins = {agent_i.player: 0, agent_j.player: 0}
+            play_round(agent_i, [agent_j], wins, num_matches=num_matchs)
+            print('{} vs {} = {} : {}'.format(
+                agent_i.name,
+                agent_j.name,
+                wins[agent_i.player],
+                wins[agent_j.player])
+            )
+
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument(
         "score_fn",
-        choices=["fn1", "fn2", "fn3"],
+        choices=["fn1", "fn2", "fn3", "versus"],
         type=str,
         help="Choose the score function to tune."
     )
@@ -255,8 +284,9 @@ if __name__ == "__main__":
     params = {"num_matches": args.num_matches,
               "n_jobs": args.num_jobs,
               "grid_file": args.grid_file}
-
-    if args.score_fn == "fn1":
+    if args.score_fn == "versus":
+        custom_match(num_matchs=args.num_matches)
+    elif args.score_fn == "fn1":
         grid_search_custom_fn1_abcd(**params)
     elif args.score_fn == "fn2":
         grid_search_custom_fn2_abc(**params)
